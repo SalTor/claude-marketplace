@@ -1,0 +1,9 @@
+{
+  "name": "jujutsu",
+  "version": "0.0.1",
+  "description": "Teaches Claude to use Jujutsu instead of Git for source control operations.",
+  "author": {
+    "name": "Stephen Jennings"
+  },
+  "keywords": ["jujutsu", "jj", "worktree", "workspace", "vcs"]
+}
