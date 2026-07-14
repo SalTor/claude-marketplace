@@ -1,0 +1,9 @@
+{
+  "name": "jj-worktrees",
+  "version": "0.1.0",
+  "description": "Replaces Claude Code's default git-worktree isolation with Jujutsu (jj) workspaces via WorktreeCreate/WorktreeRemove hooks.",
+  "author": {
+    "name": "Stephen"
+  },
+  "keywords": ["jujutsu", "jj", "worktree", "workspace", "vcs"]
+}
