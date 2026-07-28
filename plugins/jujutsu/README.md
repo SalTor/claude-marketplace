@@ -19,6 +19,12 @@ workspaces**. When you run `claude --worktree <name>` (or Claude uses the
 The bundled `jj-workspaces` skill teaches Claude to prefer jj workspaces and
 never fall back to `git worktree` commands in this repo.
 
+## Skills
+
+- `jujutsu` — teaches Claude to use the `jj` CLI instead of `git` for source
+  control (status, log, diff, describing/committing, editing history,
+  bookmarks, remotes, conflict resolution, and pull requests).
+
 ## Requirements
 
 - `jj` (Jujutsu) on `PATH`
