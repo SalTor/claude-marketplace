@@ -18,6 +18,12 @@ if [ -z "$NAME" ]; then
   echo "jj-worktrees: no .name in WorktreeCreate payload" >&2
   exit 1
 fi
+case "$NAME" in
+  */*|.|..)
+    echo "jj-worktrees: workspace name must be a single path component: $NAME" >&2
+    exit 1
+    ;;
+esac
 if [ -z "$REPO_CWD" ]; then
   REPO_CWD="$PWD"
 fi
@@ -36,11 +42,36 @@ if ! REPO_ROOT="$(jj root 2>/dev/null)"; then
   exit 1
 fi
 
-# Place workspaces as siblings of the repo root by default, matching jj's own
-# convention that workspace paths live outside the primary working copy.
-# Override with JJ_WORKTREE_DIR (absolute path to a parent directory).
-PARENT_DIR="${JJ_WORKTREE_DIR:-$(dirname "$REPO_ROOT")}"
-WORKSPACE_PATH="$PARENT_DIR/$(basename "$REPO_ROOT")-$NAME"
+# Where to put the new workspace. Two layouts:
+#   sibling (default) — next to the repo root, named "<repo>-<name>"
+#   nested            — inside the repo root, named "<name>"
+# Resolution order: JJ_WORKSPACE_LAYOUT env var, then the jj config key
+# `claude-code.workspace-layout` (set it per-repo with
+# `jj config set --repo claude-code.workspace-layout nested`), then "sibling".
+LAYOUT="${JJ_WORKSPACE_LAYOUT:-}"
+if [ -z "$LAYOUT" ]; then
+  LAYOUT="$(jj config get claude-code.workspace-layout 2>/dev/null || true)"
+fi
+LAYOUT="${LAYOUT:-sibling}"
+
+case "$LAYOUT" in
+  sibling)
+    # jj's own convention: workspace paths live outside the primary working
+    # copy. Override the parent directory with JJ_WORKTREE_DIR.
+    PARENT_DIR="${JJ_WORKTREE_DIR:-$(dirname "$REPO_ROOT")}"
+    WORKSPACE_PATH="$PARENT_DIR/$(basename "$REPO_ROOT")-$NAME"
+    ;;
+  nested)
+    if [ -n "${JJ_WORKTREE_DIR:-}" ]; then
+      echo "jj-worktrees: ignoring JJ_WORKTREE_DIR because layout is 'nested'" >&2
+    fi
+    WORKSPACE_PATH="$REPO_ROOT/$NAME"
+    ;;
+  *)
+    echo "jj-worktrees: invalid workspace layout '$LAYOUT' (expected 'sibling' or 'nested')" >&2
+    exit 1
+    ;;
+esac
 
 if [ -e "$WORKSPACE_PATH" ]; then
   echo "jj-worktrees: target path already exists: $WORKSPACE_PATH" >&2
@@ -55,6 +86,25 @@ if ! jj workspace add --name "$NAME" "$WORKSPACE_PATH" >&2; then
   exit 1
 fi
 
+# jj skips nested workspaces when snapshotting the outer working copy, but a
+# colocated git repo does not — the workspace would show up as an untracked
+# directory in `git status`. Exclude it locally (never committed).
+if [ "$LAYOUT" = "nested" ]; then
+  GIT_DIR_PATH="$(git -C "$REPO_ROOT" rev-parse --git-common-dir 2>/dev/null || true)"
+  case "$GIT_DIR_PATH" in
+    '') ;;
+    /*) ;;
+    *) GIT_DIR_PATH="$REPO_ROOT/$GIT_DIR_PATH" ;;
+  esac
+  if [ -n "$GIT_DIR_PATH" ] && [ -d "$GIT_DIR_PATH" ]; then
+    EXCLUDE_FILE="$GIT_DIR_PATH/info/exclude"
+    if ! grep -qxF "/$NAME/" "$EXCLUDE_FILE" 2>/dev/null; then
+      mkdir -p "$GIT_DIR_PATH/info"
+      printf '/%s/\n' "$NAME" >> "$EXCLUDE_FILE"
+    fi
+  fi
+fi
+
 # Copy local gitignored config into the new workspace. Since a configured
 # WorktreeCreate hook bypasses .worktreeinclude, replicate it here if present.
 INCLUDE_FILE="$REPO_ROOT/.worktreeinclude"
@@ -65,6 +115,11 @@ if [ -f "$INCLUDE_FILE" ]; then
     esac
     for src in $REPO_ROOT/$pattern; do
       [ -e "$src" ] || continue
+      # Under the nested layout the new workspace is itself inside $REPO_ROOT,
+      # so a broad pattern could match it. Never copy a workspace into itself.
+      case "$src" in
+        "$WORKSPACE_PATH"|"$WORKSPACE_PATH"/*) continue ;;
+      esac
       rel="${src#$REPO_ROOT/}"
       dest="$WORKSPACE_PATH/$rel"
       mkdir -p "$(dirname "$dest")"

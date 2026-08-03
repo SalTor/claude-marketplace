@@ -22,10 +22,42 @@ if ! command -v jj >/dev/null 2>&1; then
   exit 1
 fi
 
-# Derive the workspace name if the payload didn't supply it: the create hook
-# named the directory "<repo>-<name>", and named the workspace "<name>".
+resolve_path() {
+  ( cd "$1" 2>/dev/null && pwd -P ) || printf '%s' "$1"
+}
+
+# A nested-layout workspace sits directly inside another jj working copy.
+PARENT_PATH="$(dirname "$WORKSPACE_PATH")"
+NESTED=0
+if [ -d "$PARENT_PATH/.jj" ]; then
+  NESTED=1
+fi
+
+# Derive the workspace name if the payload didn't supply it. Preferred method is
+# asking the repo which workspace lives at this path, which works for both the
+# sibling and nested layouts.
+if [ -z "$NAME" ] && [ -d "$WORKSPACE_PATH" ]; then
+  TARGET_REAL="$(resolve_path "$WORKSPACE_PATH")"
+  WS_LIST="$( ( cd "$WORKSPACE_PATH" && jj workspace list -T 'name ++ "\t" ++ root ++ "\n"' ) 2>/dev/null || true )"
+  while IFS="$(printf '\t')" read -r ws_name ws_root; do
+    [ -n "$ws_name" ] && [ -n "${ws_root:-}" ] || continue
+    if [ "$(resolve_path "$ws_root")" = "$TARGET_REAL" ]; then
+      NAME="$ws_name"
+      break
+    fi
+  done <<EOF
+$WS_LIST
+EOF
+fi
+
+# Last resort: infer from the directory name. The create hook names the
+# directory "<name>" under the nested layout and "<repo>-<name>" under sibling.
 if [ -z "$NAME" ]; then
-  NAME="$(basename "$WORKSPACE_PATH" | sed 's/^[^-]*-//')"
+  if [ "$NESTED" -eq 1 ]; then
+    NAME="$(basename "$WORKSPACE_PATH")"
+  else
+    NAME="$(basename "$WORKSPACE_PATH" | sed 's/^[^-]*-//')"
+  fi
 fi
 
 # Forget the workspace from the repo's operation log. `jj workspace forget`
@@ -39,4 +71,29 @@ else
   # Directory already gone; try to forget by name from any nearby repo context.
   echo "jj-worktrees: workspace path missing, attempting forget by name only" >&2
   jj workspace forget "$NAME" >&2 2>/dev/null || true
+fi
+
+# Drop the local git exclude entry the create hook added for nested workspaces.
+if [ "$NESTED" -eq 1 ]; then
+  GIT_DIR_PATH="$(git -C "$PARENT_PATH" rev-parse --git-common-dir 2>/dev/null || true)"
+  case "$GIT_DIR_PATH" in
+    '') ;;
+    /*) ;;
+    *) GIT_DIR_PATH="$PARENT_PATH/$GIT_DIR_PATH" ;;
+  esac
+  EXCLUDE_FILE="${GIT_DIR_PATH:-}/info/exclude"
+  DIR_NAME="$(basename "$WORKSPACE_PATH")"
+  if [ -n "$GIT_DIR_PATH" ] && [ -f "$EXCLUDE_FILE" ] && grep -qxF "/$DIR_NAME/" "$EXCLUDE_FILE"; then
+    TMP_EXCLUDE="$EXCLUDE_FILE.jj-worktrees.$$"
+    # grep exits 1 when every line was filtered out — that is success here.
+    set +e
+    grep -vxF "/$DIR_NAME/" "$EXCLUDE_FILE" > "$TMP_EXCLUDE"
+    GREP_RC=$?
+    set -e
+    if [ "$GREP_RC" -le 1 ]; then
+      mv "$TMP_EXCLUDE" "$EXCLUDE_FILE"
+    else
+      rm -f "$TMP_EXCLUDE"
+    fi
+  fi
 fi

@@ -33,8 +33,38 @@ never fall back to `git worktree` commands in this repo.
 
 ## Configuration
 
+### Workspace layout
+
+Controls where new workspaces are created:
+
+| Layout | Location for workspace `feature` in `/path/to/repo` |
+| --- | --- |
+| `sibling` (default) | `/path/to/repo-feature` |
+| `nested` | `/path/to/repo/feature` |
+
+Set it per-repo (or per-user with `--user`) via jj config:
+
+```sh
+jj config set --repo claude-code.workspace-layout nested
+```
+
+Or per-invocation via the environment, which takes precedence over jj config:
+
+```sh
+JJ_WORKSPACE_LAYOUT=nested claude --worktree feature
+```
+
+Under the `nested` layout the create hook also appends the workspace directory
+to `.git/info/exclude` (and the remove hook takes it back out) so colocated
+repos don't report the workspace as untracked. jj itself already skips nested
+workspaces when snapshotting the outer working copy, so no `.gitignore` entry
+is needed for `jj status`.
+
+### Other settings
+
 - `JJ_WORKTREE_DIR` — absolute path to the parent directory where workspaces
-  are created. Defaults to a sibling of the repo root, named `<repo>-<name>`.
+  are created, named `<repo>-<name>`. Applies to the `sibling` layout only;
+  ignored (with a warning) when the layout is `nested`.
 
 ## Notes
 

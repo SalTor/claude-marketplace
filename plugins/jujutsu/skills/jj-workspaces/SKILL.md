@@ -42,9 +42,15 @@ the normal Claude Code worktree flow works unchanged.
 - The repo must already be a jj repo. For a git-backed project, that means
   `jj git init --colocate` has been run. If creation fails with "not inside a
   jj repository", tell the user to initialize jj first.
-- Default workspace location is a sibling of the repo root named
-  `<repo>-<name>`. Override the parent directory by setting `JJ_WORKTREE_DIR`
-  to an absolute path before launching Claude Code.
+- Workspace location is controlled by the layout setting, resolved from
+  `JJ_WORKSPACE_LAYOUT` first, then the jj config key
+  `claude-code.workspace-layout`, defaulting to `sibling`:
+  - `sibling` — `<repo-root>-<name>` next to the repo root. Override the parent
+    directory with `JJ_WORKTREE_DIR` (absolute path).
+  - `nested` — `<repo-root>/<name>` inside the default workspace. Set it with
+    `jj config set --repo claude-code.workspace-layout nested`. The hooks keep
+    the directory in `.git/info/exclude` so colocated repos stay clean;
+    `jj status` in the outer workspace already ignores nested workspaces.
 - Local gitignored files listed in `.worktreeinclude` are copied into new
   workspaces by the create hook (Claude Code skips `.worktreeinclude` on its
   own once a WorktreeCreate hook is configured, so the hook does it).
