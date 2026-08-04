@@ -1,14 +1,14 @@
 ---
 name: jujutsu
 description: >
-  Use Jujutsu (jj) version control instead of git when working in a Jujutsu
-  repository (a directory containing a .jj folder). Load this skill before doing
-  any version control operations in a Jujutsu repository. Covers the jj CLI:
+  Use when doing any version control operations (status, log, diff, commit,
+  branch/bookmark, rebase, push, pull request, resolving conflicts) and
+  `jj workspace root` exits 0 — that means the working directory is inside a
+  Jujutsu repository, so use the jj CLI instead of git. Run
+  `jj workspace root` to check before falling back to git. Covers the jj CLI:
   status, log, diff, describing/committing changes, editing history, bookmarks,
   remotes, conflict resolution, and creating pull requests. Prefer jj commands
   over git.
-match:
-  - directory_exists: .jj
 ---
 
 # Jujutsu (jj) Version Control
