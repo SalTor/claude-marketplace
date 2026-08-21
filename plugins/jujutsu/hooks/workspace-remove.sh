@@ -50,10 +50,23 @@ $WS_LIST
 EOF
 fi
 
+# A central-layout workspace sits at "<root>/<repo>/<name>", so its grandparent
+# is the configured workspace root and the directory name is the workspace name.
+CENTRAL=0
+CENTRAL_ROOT="${JJ_WORKSPACE_ROOT:-}"
+if [ -z "$CENTRAL_ROOT" ]; then
+  CENTRAL_ROOT="$( ( cd "$PARENT_PATH" 2>/dev/null && jj config get claude-code.workspace-root ) 2>/dev/null || true )"
+fi
+CENTRAL_ROOT="${CENTRAL_ROOT:-$HOME/code/workspaces}"
+if [ "$NESTED" -eq 0 ] && [ "$(dirname "$PARENT_PATH")" = "${CENTRAL_ROOT%/}" ]; then
+  CENTRAL=1
+fi
+
 # Last resort: infer from the directory name. The create hook names the
-# directory "<name>" under the nested layout and "<repo>-<name>" under sibling.
+# directory "<name>" under the central and nested layouts, "<repo>-<name>"
+# under sibling.
 if [ -z "$NAME" ]; then
-  if [ "$NESTED" -eq 1 ]; then
+  if [ "$NESTED" -eq 1 ] || [ "$CENTRAL" -eq 1 ]; then
     NAME="$(basename "$WORKSPACE_PATH")"
   else
     NAME="$(basename "$WORKSPACE_PATH" | sed 's/^[^-]*-//')"
@@ -71,6 +84,12 @@ else
   # Directory already gone; try to forget by name from any nearby repo context.
   echo "jj-worktrees: workspace path missing, attempting forget by name only" >&2
   jj workspace forget "$NAME" >&2 2>/dev/null || true
+fi
+
+# Reap the per-repo directory the central layout created, but only once its last
+# workspace is gone. rmdir refuses a non-empty directory, which is what we want.
+if [ "$CENTRAL" -eq 1 ]; then
+  rmdir "$PARENT_PATH" 2>/dev/null || true
 fi
 
 # Drop the local git exclude entry the create hook added for nested workspaces.

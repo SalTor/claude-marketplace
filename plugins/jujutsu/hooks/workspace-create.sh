@@ -42,19 +42,38 @@ if ! REPO_ROOT="$(jj root 2>/dev/null)"; then
   exit 1
 fi
 
-# Where to put the new workspace. Two layouts:
-#   sibling (default) — next to the repo root, named "<repo>-<name>"
+# Where to put the new workspace. Three layouts:
+#   central (default) — "<root>/<repo>/<name>" under a shared workspace root
+#   sibling           — next to the repo root, named "<repo>-<name>"
 #   nested            — inside the repo root, named "<name>"
 # Resolution order: JJ_WORKSPACE_LAYOUT env var, then the jj config key
 # `claude-code.workspace-layout` (set it per-repo with
-# `jj config set --repo claude-code.workspace-layout nested`), then "sibling".
+# `jj config set --repo claude-code.workspace-layout nested`), then "central".
 LAYOUT="${JJ_WORKSPACE_LAYOUT:-}"
 if [ -z "$LAYOUT" ]; then
   LAYOUT="$(jj config get claude-code.workspace-layout 2>/dev/null || true)"
 fi
-LAYOUT="${LAYOUT:-sibling}"
+LAYOUT="${LAYOUT:-central}"
 
 case "$LAYOUT" in
+  central)
+    if [ -n "${JJ_WORKTREE_DIR:-}" ]; then
+      echo "jj-worktrees: ignoring JJ_WORKTREE_DIR because layout is 'central' (use JJ_WORKSPACE_ROOT)" >&2
+    fi
+    ROOT_DIR="${JJ_WORKSPACE_ROOT:-}"
+    if [ -z "$ROOT_DIR" ]; then
+      ROOT_DIR="$(jj config get claude-code.workspace-root 2>/dev/null || true)"
+    fi
+    ROOT_DIR="${ROOT_DIR:-$HOME/code/workspaces}"
+    case "$ROOT_DIR" in
+      /*) ;;
+      *)
+        echo "jj-worktrees: workspace root must be an absolute path: $ROOT_DIR" >&2
+        exit 1
+        ;;
+    esac
+    WORKSPACE_PATH="$ROOT_DIR/$(basename "$REPO_ROOT")/$NAME"
+    ;;
   sibling)
     # jj's own convention: workspace paths live outside the primary working
     # copy. Override the parent directory with JJ_WORKTREE_DIR.
@@ -68,7 +87,7 @@ case "$LAYOUT" in
     WORKSPACE_PATH="$REPO_ROOT/$NAME"
     ;;
   *)
-    echo "jj-worktrees: invalid workspace layout '$LAYOUT' (expected 'sibling' or 'nested')" >&2
+    echo "jj-worktrees: invalid workspace layout '$LAYOUT' (expected 'central', 'sibling' or 'nested')" >&2
     exit 1
     ;;
 esac
@@ -77,6 +96,9 @@ if [ -e "$WORKSPACE_PATH" ]; then
   echo "jj-worktrees: target path already exists: $WORKSPACE_PATH" >&2
   exit 1
 fi
+
+# The central layout adds a per-repo directory level that may not exist yet.
+mkdir -p "$(dirname "$WORKSPACE_PATH")"
 
 # `jj workspace add` creates a new working copy sharing the repo, with its own
 # working-copy commit. Name the workspace after $NAME so `jj workspace list`

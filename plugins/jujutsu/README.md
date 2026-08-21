@@ -131,7 +131,8 @@ Controls where new workspaces are created:
 
 | Layout | Location for workspace `feature` in `/path/to/repo` |
 | --- | --- |
-| `sibling` (default) | `/path/to/repo-feature` |
+| `central` (default) | `~/code/workspaces/repo/feature` |
+| `sibling` | `/path/to/repo-feature` |
 | `nested` | `/path/to/repo/feature` |
 
 Set it per-repo (or per-user with `--user`) via jj config:
@@ -154,9 +155,14 @@ is needed for `jj status`.
 
 ### Other settings
 
+- `JJ_WORKSPACE_ROOT` — absolute path to the shared root the `central` layout
+  creates `<repo>/<name>` under. Falls back to the jj config key
+  `claude-code.workspace-root`, then `~/code/workspaces`. The create hook makes
+  the per-repo directory if it is missing; the remove hook reaps it once its
+  last workspace is gone. Ignored (with a warning) under other layouts.
 - `JJ_WORKTREE_DIR` — absolute path to the parent directory where workspaces
   are created, named `<repo>-<name>`. Applies to the `sibling` layout only;
-  ignored (with a warning) when the layout is `nested`.
+  ignored (with a warning) under other layouts.
 
 ## Notes
 

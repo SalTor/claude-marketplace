@@ -4,8 +4,9 @@ description: >
   Use when working in a repository that uses Jujutsu (jj) and the user asks to
   create parallel/isolated working environments, work in a worktree, spin up a
   worktree, or run parallel sessions. Explains that this project uses jj
-  workspaces instead of git worktrees, and how creation/removal is handled by
-  the WorktreeCreate/WorktreeRemove hooks.
+  workspaces instead of git worktrees, that workspaces belong at
+  ~/code/workspaces/<repo>/<slug>, and how creation/removal is handled by the
+  WorktreeCreate/WorktreeRemove hooks.
 ---
 
 # jj workspaces instead of git worktrees
@@ -27,6 +28,18 @@ the normal Claude Code worktree flow works unchanged.
 - A jj workspace is a separate working directory sharing the same repo. Each
   workspace has its own working-copy commit (`@`). There are no branches to
   create — the workspace name is the unit of isolation.
+- Workspaces belong at **`~/code/workspaces/<repo>/<slug>`**. The create hook's
+  default `central` layout produces exactly that, so the standard worktree flow
+  already lands in the right place — do not pass a path or pick a directory
+  yourself. When creating one by hand, use
+  `jj workspace add --name <slug> ~/code/workspaces/<repo>/<slug>`.
+- Never put a workspace next to the repo root (`<repo>-<slug>`) or inside it
+  (`<repo>/<slug>`). Those are the `sibling` and `nested` layouts, kept only for
+  repos that opt into them explicitly.
+- After creating a workspace, bootstrap it before running any tooling: read
+  `~/code/workspaces/AGENTS.md`, install dependencies, and copy the gitignored
+  config the primary checkout carries. The hook copies whatever
+  `.worktreeinclude` lists, which usually covers the config but not the install.
 
 ## Key differences from git worktrees
 
@@ -44,7 +57,12 @@ the normal Claude Code worktree flow works unchanged.
   jj repository", tell the user to initialize jj first.
 - Workspace location is controlled by the layout setting, resolved from
   `JJ_WORKSPACE_LAYOUT` first, then the jj config key
-  `claude-code.workspace-layout`, defaulting to `sibling`:
+  `claude-code.workspace-layout`, defaulting to `central`:
+  - `central` (default) — `<root>/<repo>/<name>`, where `<root>` comes from
+    `JJ_WORKSPACE_ROOT`, then the jj config key `claude-code.workspace-root`,
+    defaulting to `~/code/workspaces`. The root must be an absolute path. The
+    create hook makes the per-repo directory if it is missing; the remove hook
+    reaps it once its last workspace is gone.
   - `sibling` — `<repo-root>-<name>` next to the repo root. Override the parent
     directory with `JJ_WORKTREE_DIR` (absolute path).
   - `nested` — `<repo-root>/<name>` inside the default workspace. Set it with
