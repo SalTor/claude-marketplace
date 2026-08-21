@@ -1,6 +1,6 @@
 {
   "name": "jujutsu",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Teaches Claude to use Jujutsu instead of Git for source control operations.",
   "author": {
     "name": "Stephen Jennings"
