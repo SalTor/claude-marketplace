@@ -1,8 +1,8 @@
 {
-  "name": "jennings",
+  "name": "saltor",
+  "description": "Personal Claude Code plugins, forked from jennings/claude-marketplace.",
   "owner": {
-    "name": "Stephen Jennings",
-    "email": "24511+jennings@users.noreply.github.com"
+    "name": "SalTor"
   },
   "plugins": [
     {

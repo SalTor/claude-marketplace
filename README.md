@@ -1,13 +1,15 @@
+Forked from [jennings/claude-marketplace](https://github.com/jennings/claude-marketplace).
+
 ## Adding the marketplace
 
 ```command
-$ claude plugin marketplace add jennings/claude-marketplace
+$ claude plugin marketplace add SalTor/claude-marketplace
 ```
 
 ## Installing a plugin
 
 ```command
-$ claude plugin add jujutsu@jennings
+$ claude plugin install jujutsu@saltor
 ```
 
 ## Plugins

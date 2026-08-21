@@ -49,7 +49,7 @@ Run `claude` and paste:
 
 > Install the jujutsu plugin's worktree hooks into my user settings. Read
 > `~/.claude/plugins/installed_plugins.json`, take the `installPath` for
-> `jujutsu@jennings`, and add `WorktreeCreate` and `WorktreeRemove` entries to
+> `jujutsu@saltor`, and add `WorktreeCreate` and `WorktreeRemove` entries to
 > the `hooks` object in `~/.claude/settings.json` that run
 > `bash "<installPath>/hooks/workspace-create.sh"` (timeout 60) and
 > `bash "<installPath>/hooks/workspace-remove.sh"` (timeout 30). Write the
@@ -65,9 +65,9 @@ prompt to scope the hooks to a single project.
 Find the plugin's install path:
 
 ```command
-$ jq -r '.plugins["jujutsu@jennings"][0].installPath' \
+$ jq -r '.plugins["jujutsu@saltor"][0].installPath' \
     ~/.claude/plugins/installed_plugins.json
-/Users/you/.claude/plugins/cache/jennings/jujutsu/0.0.1
+/Users/you/.claude/plugins/cache/saltor/jujutsu/0.0.2
 ```
 
 Then merge these two keys into the `hooks` object in your chosen
@@ -81,7 +81,7 @@ Then merge these two keys into the `hooks` object in your chosen
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"/Users/you/.claude/plugins/cache/jennings/jujutsu/0.0.1/hooks/workspace-create.sh\"",
+            "command": "bash \"/Users/you/.claude/plugins/cache/saltor/jujutsu/0.0.2/hooks/workspace-create.sh\"",
             "timeout": 60
           }
         ]
@@ -92,7 +92,7 @@ Then merge these two keys into the `hooks` object in your chosen
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"/Users/you/.claude/plugins/cache/jennings/jujutsu/0.0.1/hooks/workspace-remove.sh\"",
+            "command": "bash \"/Users/you/.claude/plugins/cache/saltor/jujutsu/0.0.2/hooks/workspace-remove.sh\"",
             "timeout": 30
           }
         ]
@@ -107,7 +107,7 @@ defined for hooks that come from a plugin, and `~` is not expanded inside the
 quoted command.
 
 **Redo this after every plugin update.** The install path is version-pinned
-(`.../jujutsu/0.0.1`), so a version bump leaves the hooks pointing at a
+(`.../jujutsu/0.0.2`), so a version bump leaves the hooks pointing at a
 directory that no longer exists and worktree creation fails until you point
 them at the new path.
 
