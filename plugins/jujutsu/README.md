@@ -9,9 +9,13 @@ workspaces**. When you run `claude --worktree <name>` (or Claude uses the
 
 - `WorktreeCreate` → `hooks/workspace-create.sh`
   Reads `.name` and `.cwd` from the stdin JSON payload, runs
-  `jj workspace add --name <name> <path>`, copies any `.worktreeinclude` files,
+  `jj workspace add --name <name> -r 'trunk()' <path>`, copies any `.worktreeinclude` files,
   and prints the workspace path to stdout (which Claude Code uses as the
-  session working directory). Any non-zero exit aborts creation.
+  session working directory). Any non-zero exit aborts creation. The new
+  workspace starts on `trunk()`, not on the launching checkout's change; set
+  `JJ_WORKSPACE_BASE` or `jj config set --repo claude-code.workspace-base <rev>`
+  to change that (`@-` restores jj's default). A repo with no trunk falls back
+  to jj's default.
 - `WorktreeRemove` → `hooks/workspace-remove.sh`
   Reads `.worktree_path`, runs `jj workspace forget <name>`, and removes the
   directory.

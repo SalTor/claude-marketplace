@@ -32,7 +32,9 @@ the normal Claude Code worktree flow works unchanged.
   default `central` layout produces exactly that, so the standard worktree flow
   already lands in the right place — do not pass a path or pick a directory
   yourself. When creating one by hand, use
-  `jj workspace add --name <slug> ~/code/workspaces/<repo>/<slug>`.
+  `jj workspace add --name <slug> -r 'trunk()' ~/code/workspaces/<repo>/<slug>`.
+  The hook bases new workspaces on `trunk()` too, so a session's workspace never
+  inherits the launching checkout's in-flight change.
 - Never put a workspace next to the repo root (`<repo>-<slug>`) or inside it
   (`<repo>/<slug>`). Those are the `sibling` and `nested` layouts, kept only for
   repos that opt into them explicitly.

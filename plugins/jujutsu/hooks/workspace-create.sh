@@ -100,10 +100,35 @@ fi
 # The central layout adds a per-repo directory level that may not exist yet.
 mkdir -p "$(dirname "$WORKSPACE_PATH")"
 
+# Which revision the new workspace's working-copy commit sits on. Without -r,
+# jj uses the parents of the current workspace's @, so a session started in a
+# checkout with work in flight would inherit that work. Default to trunk().
+# Resolution order: JJ_WORKSPACE_BASE env var, then the jj config key
+# `claude-code.workspace-base`, then "trunk()". Set either to "@-" to get jj's
+# own behaviour back. When trunk() finds no trunk (it then falls back to
+# root(), an empty tree), use jj's default instead.
+BASE="${JJ_WORKSPACE_BASE:-}"
+if [ -z "$BASE" ]; then
+  BASE="$(jj config get claude-code.workspace-base 2>/dev/null || true)"
+fi
+BASE="${BASE:-trunk()}"
+BASE_ARGS=()
+if [ "$BASE" = "trunk()" ] && jj log --no-graph -r 'trunk() & root()' -T 'commit_id' 2>/dev/null | grep -q .; then
+  echo "jj-worktrees: no trunk found; basing the workspace on the current @'s parents" >&2
+elif [ "$BASE" != "@-" ]; then
+  # Check the revision first: `jj workspace add` creates the directory before
+  # it resolves -r, so a bad revision would leave a stub that blocks a retry.
+  if ! jj log --no-graph -r "$BASE" -T '' >/dev/null 2>&1; then
+    echo "jj-worktrees: workspace base '$BASE' does not resolve to a revision" >&2
+    exit 1
+  fi
+  BASE_ARGS=(-r "$BASE")
+fi
+
 # `jj workspace add` creates a new working copy sharing the repo, with its own
 # working-copy commit. Name the workspace after $NAME so `jj workspace list`
 # and `jj workspace forget` can target it during removal.
-if ! jj workspace add --name "$NAME" "$WORKSPACE_PATH" >&2; then
+if ! jj workspace add --name "$NAME" ${BASE_ARGS[@]+"${BASE_ARGS[@]}"} "$WORKSPACE_PATH" >&2; then
   echo "jj-worktrees: 'jj workspace add' failed" >&2
   exit 1
 fi
