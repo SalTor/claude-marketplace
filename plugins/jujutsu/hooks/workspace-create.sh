@@ -175,5 +175,20 @@ if [ -f "$INCLUDE_FILE" ]; then
   done < "$INCLUDE_FILE"
 fi
 
+# Optional post-create command, run with the workspace path as its only
+# argument (for example one that pre-accepts Claude Code's folder trust, which
+# is keyed on the exact path and so asks again for every new workspace).
+# Resolution order: JJ_WORKSPACE_POST_CREATE env var, then the jj config key
+# `claude-code.workspace-post-create`. A failure is reported, not fatal.
+POST_CREATE="${JJ_WORKSPACE_POST_CREATE:-}"
+if [ -z "$POST_CREATE" ]; then
+  POST_CREATE="$(jj config get claude-code.workspace-post-create 2>/dev/null || true)"
+fi
+if [ -n "$POST_CREATE" ]; then
+  if ! "$POST_CREATE" "$WORKSPACE_PATH" >&2; then
+    echo "jj-worktrees: post-create command failed: $POST_CREATE" >&2
+  fi
+fi
+
 # ONLY the path goes to stdout.
 printf '%s\n' "$WORKSPACE_PATH"

@@ -167,6 +167,13 @@ is needed for `jj status`.
 - `JJ_WORKTREE_DIR` — absolute path to the parent directory where workspaces
   are created, named `<repo>-<name>`. Applies to the `sibling` layout only;
   ignored (with a warning) under other layouts.
+- `JJ_WORKSPACE_POST_CREATE` — a command the create hook runs with the new
+  workspace's path as its only argument, after the workspace exists. Falls back
+  to the jj config key `claude-code.workspace-post-create`. Its output goes to
+  stderr and a failure is reported without aborting. Use it to pre-accept
+  Claude Code's folder trust, which is stored per exact path in
+  `~/.claude.json` (`projects["<path>"].hasTrustDialogAccepted`), so a session
+  started in a new workspace does not ask again.
 
 ## Notes
 
